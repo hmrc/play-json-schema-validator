@@ -1,23 +1,13 @@
 # Play JSON Schema Validator
 
-[![Build Status](https://travis-ci.org/eclipsesource/play-json-schema-validator.svg?branch=master)](https://travis-ci.org/eclipsesource/play-json-schema-validator) [![Coverage Status](https://coveralls.io/repos/eclipsesource/play-json-schema-validator/badge.svg?branch=master&service=github)](https://coveralls.io/github/eclipsesource/play-json-schema-validator?branch=master)
-
 This is a JSON schema (draft v4/draft v7) validation library for Scala based on Play's JSON library.
-
-If you experience any issues or have feature requests etc., please don't hesitate to [file an issue](https://github.com/eclipsesource/play-json-schema-validator/issues/new). Thanks!
 
 ## <a name="Installation">Installation 
 
-Then add the dependency (supporting Scala > 3.3.4):
+Then add the dependency (supporting Scala >= 3.3.6):
 
 ```Scala
-libraryDependencies += "io.github.arturopala"  %% "play-json-schema-validator" % "1.1.0"
-```
-
-or (supporting Scala 2.13):
-
-```Scala
-libraryDependencies += "com.github.arturopala"  %% "play-json-schema-validator" % "1.0.0"
+libraryDependencies += "uk.gov.hmrc"  %% "play-json-schema-validator" % "0.1.0"
 ```
 
 Please also see the [respective release notes](https://github.com/eclipsesource/play-json-schema-validator/releases/tag/v0.9.5).
