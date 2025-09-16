@@ -1,0 +1,57 @@
+/*
+ * Copyright 2025 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.eclipsesource.schema.internal.draft4.constraints
+
+import com.eclipsesource.schema.internal.Keywords
+import com.eclipsesource.schema.internal.constraints.Constraints.{AnyConstraints, HasAnyConstraint, StringConstraints}
+import com.eclipsesource.schema.internal.validation.VA
+import com.eclipsesource.schema.{SchemaResolutionContext, SchemaType, SchemaValue}
+import com.osinka.i18n.Lang
+import play.api.libs.json.{JsNumber, JsString, JsValue}
+
+case class StringConstraints4(minLength: Option[Int] = None,
+                              maxLength: Option[Int] = None,
+                              pattern: Option[String] = None,
+                              format: Option[String] = None,
+                              any: AnyConstraints
+                             ) extends HasAnyConstraint with StringConstraints {
+
+  import com.eclipsesource.schema.internal.validators.StringValidators._
+
+  override def subSchemas: Set[SchemaType] = any.subSchemas
+
+  override def resolvePath(path: String): Option[SchemaType] = path match {
+    case Keywords.String.MinLength => minLength.map(min => SchemaValue(JsNumber(min)))
+    case Keywords.String.MaxLength => maxLength.map(max => SchemaValue(JsNumber(max)))
+    case Keywords.String.Pattern => pattern.map(p => SchemaValue(JsString(p)))
+    case Keywords.String.Format => format.map(f => SchemaValue(JsString(f)))
+    case other => any.resolvePath(other)
+  }
+
+  def validate(schema: SchemaType, json: JsValue, context: SchemaResolutionContext)
+              (implicit lang: Lang): VA[JsValue] = {
+    val reader = for {
+      minLength <- validateMinLength(minLength)
+      maxLength <- validateMaxLength(maxLength)
+      pattern <- validatePattern(pattern)
+      format <- validateFormat(format)
+    } yield minLength |+| maxLength |+| pattern |+| format
+    reader.run(context)
+      .repath(_.compose(context.instancePath))
+      .validate(json)
+  }
+}

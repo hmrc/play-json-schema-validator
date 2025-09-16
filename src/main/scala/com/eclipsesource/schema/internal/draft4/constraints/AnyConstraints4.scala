@@ -1,0 +1,73 @@
+/*
+ * Copyright 2025 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.eclipsesource.schema.internal.draft4.constraints
+
+import com.eclipsesource.schema.{SchemaMap, SchemaProp, SchemaResolutionContext, SchemaSeq, SchemaType, SchemaValue}
+import com.eclipsesource.schema.internal.Keywords
+import com.eclipsesource.schema.internal.constraints.Constraints.AnyConstraints
+import com.eclipsesource.schema.internal.validation.{Rule, VA}
+import com.osinka.i18n.Lang
+import play.api.libs.json.{JsArray, JsString, JsValue}
+import scalaz.std.option._
+import scalaz.std.set._
+import scalaz.syntax.semigroup._
+
+case class AnyConstraints4(
+    schemaType: Option[String] = None,
+    allOf: Option[Seq[SchemaType]] = None,
+    anyOf: Option[Seq[SchemaType]] = None,
+    oneOf: Option[Seq[SchemaType]] = None,
+    definitions: Option[Map[String, SchemaType]] = None,
+    enm: Option[Seq[JsValue]] = None,
+    not: Option[SchemaType] = None,
+    description: Option[String] = None,
+    id: Option[String] = None
+) extends AnyConstraints {
+
+  override def subSchemas: Set[SchemaType] =
+    (definitions.map(_.values.toSet) |+| allOf.map(_.toSet) |+| anyOf.map(_.toSet) |+| oneOf.map(_.toSet))
+      .getOrElse(Set.empty[SchemaType])
+
+  override def resolvePath(path: String): Option[SchemaType] = path match {
+    case Keywords.Any.Type        => schemaType.map(t => SchemaValue(JsString(t)))
+    case Keywords.Any.AllOf       => allOf.map(types => SchemaSeq(types))
+    case Keywords.Any.AnyOf       => anyOf.map(types => SchemaSeq(types))
+    case Keywords.Any.OneOf       => oneOf.map(types => SchemaSeq(types))
+    case Keywords.Any.Definitions => definitions.map(entries => SchemaMap(Keywords.Any.Definitions, entries.toSeq.map { case (name, schema) => SchemaProp(name, schema) }))
+    case Keywords.Any.Enum        => enm.map(e => SchemaValue(JsArray(e)))
+    case Keywords.Any.Not         => not
+    case "id"                     => id.map(id => SchemaValue(JsString(id)))
+    case _                        => None
+  }
+
+  import com.eclipsesource.schema.internal.validators.AnyConstraintValidators._
+
+  override def validate(schema: SchemaType, json: JsValue, context: SchemaResolutionContext)(implicit lang: Lang): VA[JsValue] = {
+    val reader: scalaz.Reader[SchemaResolutionContext, Rule[JsValue, JsValue]] = for {
+      allOfRule <- validateAllOf(schema, allOf)
+      anyOfRule <- validateAnyOf(schema, anyOf)
+      oneOfRule <- validateOneOf(schema, oneOf)
+      enmRule <- validateEnum(enm)
+      notRule <- validateNot(not)
+    } yield allOfRule |+| anyOfRule |+| oneOfRule |+| enmRule |+| notRule
+    reader
+      .run(context)
+      .repath(_.compose(context.instancePath))
+      .validate(json)
+  }
+
+}

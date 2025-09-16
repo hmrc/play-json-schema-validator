@@ -1,0 +1,126 @@
+/*
+ * Copyright 2025 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.eclipsesource.schema.internal.validators
+
+import com.eclipsesource.schema.internal.validation.Rule
+import com.eclipsesource.schema.internal.{Keywords, SchemaUtil, ValidatorMessages}
+import com.eclipsesource.schema.{SchemaResolutionContext, SchemaType}
+import com.osinka.i18n.Lang
+import play.api.libs.json.{JsArray, JsValue}
+import scalaz.Success
+import com.eclipsesource.schema.SchemaTypeExtensionOps
+
+object ArrayConstraintValidators {
+
+  def validateContains(contains: Option[SchemaType])(implicit lang: Lang): scalaz.Reader[SchemaResolutionContext, Rule[JsValue, JsValue]] = {
+    scalaz.Reader { context =>
+      Rule.fromMapping { json =>
+        (json, contains) match {
+          case (JsArray(values), Some(containsSchema)) =>
+            values
+              .find(value => containsSchema.validate(value, context).isSuccess)
+              .map(Success(_))
+              .getOrElse(
+                SchemaUtil.failure(
+                  "contains",
+                  ValidatorMessages("err.contains"),
+                  context.schemaPath.map(_ \ "contains"),
+                  context.instancePath,
+                  json
+                )
+              )
+          case (js @ JsArray(_), None) => Success(js)
+          case (other, _)              => expectedArray(other, context)
+        }
+      }
+    }
+  }
+
+  def validateMaxItems(max: Option[Int])(implicit lang: Lang): scalaz.Reader[SchemaResolutionContext, Rule[JsValue, JsValue]] =
+    scalaz.Reader { context =>
+      val maxItems = max
+      Rule.fromMapping {
+        case json @ JsArray(values) =>
+          maxItems match {
+            case Some(max) =>
+              if (values.size <= max) {
+                Success(json)
+              } else {
+                SchemaUtil.failure(
+                  Keywords.Array.MaxItems,
+                  ValidatorMessages("arr.max", values.size, max),
+                  context.schemaPath,
+                  context.instancePath,
+                  json
+                )
+              }
+            case None => Success(json)
+          }
+        case other => expectedArray(other, context)
+      }
+    }
+
+  def validateMinItems(min: Option[Int])(implicit lang: Lang): scalaz.Reader[SchemaResolutionContext, Rule[JsValue, JsValue]] =
+    scalaz.Reader { context =>
+      val minItems = min.getOrElse(0)
+      Rule.fromMapping {
+        case json @ JsArray(values) =>
+          if (values.size >= minItems) {
+            Success(json)
+          } else {
+            SchemaUtil.failure(
+              Keywords.Array.MinItems,
+              ValidatorMessages("arr.min", values.size, minItems),
+              context.schemaPath,
+              context.instancePath,
+              json
+            )
+          }
+        case other => expectedArray(other, context)
+      }
+    }
+
+  def validateUniqueness(unique: Option[Boolean])(implicit lang: Lang): scalaz.Reader[SchemaResolutionContext, Rule[JsValue, JsValue]] =
+    scalaz.Reader { context =>
+      val isUnique = unique.getOrElse(false)
+      Rule.fromMapping {
+        case json @ JsArray(values) if isUnique =>
+          if (values.distinct.size == values.size) {
+            Success(json)
+          } else {
+            SchemaUtil.failure(
+              Keywords.Array.UniqueItems,
+              ValidatorMessages("arr.dups"),
+              context.schemaPath,
+              context.instancePath,
+              json
+            )
+          }
+        case arr @ JsArray(_) => Success(arr)
+        case other            => expectedArray(other, context)
+      }
+    }
+
+  private def expectedArray(json: JsValue, context: SchemaResolutionContext)(implicit lang: Lang) =
+    SchemaUtil.failure(
+      Keywords.Any.Type,
+      ValidatorMessages("err.expected.type", "array", SchemaUtil.typeOfAsString(json)),
+      context.schemaPath,
+      context.instancePath,
+      json
+    )
+}
