@@ -35,3 +35,4 @@ metals.sbt
 #Coveralls
 repo-token.txt
 .java-version
+.cursor/mcp.json

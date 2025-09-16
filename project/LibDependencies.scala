@@ -1,7 +1,7 @@
 import sbt._
 
 object Version {
-  final val playJson = "3.0.4"
+  final val playJson = "3.0.5"
   final val playSpecs = "3.0.6"
   final val scalaz = "7.2.36"
   final val specs2 = "5.5.8"
@@ -22,7 +22,7 @@ object Library {
   final val nashorn = "org.openjdk.nashorn" % "nashorn-core" % Version.nashorn
 }
 
-object Dependencies {
+object LibDependencies {
   import Library._
 
   val core = List(
