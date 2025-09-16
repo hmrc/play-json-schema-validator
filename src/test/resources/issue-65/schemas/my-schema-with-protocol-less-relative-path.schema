@@ -1,0 +1,10 @@
+{
+  "properties": {
+    "foo": {
+      "$ref": "foo.schema#"
+    },
+    "quux": {
+      "$ref": "quux.schema#"
+    }
+  }
+}
