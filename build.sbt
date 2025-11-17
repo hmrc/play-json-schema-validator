@@ -7,7 +7,6 @@ val testSettings = unmanagedJars in Test ++= Seq(
 )
 
 lazy val schemaProject = Project(projectName, file("."))
-  .enablePlugins(SbtGitVersioning)
   .settings(testSettings)
   .settings(
     scalaVersion := "3.3.6",
